@@ -58,8 +58,8 @@ typedef struct {
   long switchPages;             // interval at which to switchPage 1 to 2 (milliseconds)
 } Settings;
 
-Settings default_settings = {24,true,"NL",'c',false,1000,30000};
-Settings settings = {24,true,"NL",'c',false,1000,30000};
+Settings default_settings = {24,true,"NL",'c',true,1000,30000};
+Settings settings = {24,true,"NL",'c',true,1000,30000};
 
 unsigned long previousMillis = 0;        // will store last time lcd was updated
 unsigned long oldMillis = 0;             // will store last time lcd switched pages
