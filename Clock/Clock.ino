@@ -11,7 +11,7 @@ LiquidCrystal lcd(11, 12, 2, 3, 4, 5);
 // constants won't change:
 const String days[2][8] = {{"EN","Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"},{"NL", "ma", "di", "wo", "do", "vr", "za", "zo"}};
 const String months[2][13] = {{"EN","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"},{"NL","jan","feb","mrt","mei","jun","jul","aug","sep","okt","nov","dec"}};
-const String translations[2][4] = {{"EN", "Temperature","Day","Week"},{"NL", "Temperatuur","Dag","Week"}};
+const String translations[2][4] = {{"EN", "Temp","Day","Week"},{"NL", "Temp","Dag","Week"}};
 
 /* EXPLANATION DIFFERENT FUNCTIONS FOR CLOCK
  * TIME
