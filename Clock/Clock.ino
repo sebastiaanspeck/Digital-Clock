@@ -35,6 +35,9 @@ const String translations[2][4] = {{"EN", "Temperature","Day","Week"},{"NL", "Te
 'w' = weeknumber
 'n' = daynumber
 
+ * MISCELLANEOUS
+'l' = current location  (need to create a array of enums/strings which can be used in Settings)
+
  * DELIMTERS
 ':' = delimiter
 '-' = delimiter
@@ -46,13 +49,13 @@ const String translations[2][4] = {{"EN", "Temperature","Day","Week"},{"NL", "Te
 char rows[4][16] = {{"h:m:s"},{"d D-M-Y"},{"T"},{"w n"}};
 
 typedef struct {
-  int hourFormat;           // 12 or 24 hour format
-  boolean mondayFirstDay;   // if true, monday will be used as the start of the week; if false, sunday will be used as the start of the week
-  String language;          // The language for the weekdays (only needed if you want to display weekday)
-  char degreesFormat;       // Celcius or Fahrenheit
-  boolean longFormat;       // Display temperature, weeknumber and daynumber with label
-  long interval;            // interval at which to refresh lcd (milliseconds)
-  long switchPages;         // interval at which to switchPage 1 to 2 (milliseconds)
+  int hourFormat;               // 12 or 24 hour format
+  boolean mondayFirstDay;       // if true, monday will be used as the start of the week; if false, sunday will be used as the start of the week
+  String language;              // The language for the weekdays (only needed if you want to display weekday)
+  char degreesFormat;           // Celcius or Fahrenheit
+  boolean longFormat;           // Display temperature, weeknumber and daynumber with label
+  long interval;                // interval at which to refresh lcd (milliseconds)
+  long switchPages;             // interval at which to switchPage 1 to 2 (milliseconds)
 } Settings;
 
 Settings default_settings = {24,true,"NL",'c',false,1000,30000};
@@ -152,8 +155,10 @@ void displayDesiredFunction(int row, int pos, time_t t) {
       displayNumber('d');         // display daynumber
       break;  
     case 'w':
-      displayNumber('w');        // display weeknumber
-      break;  
+      displayNumber('w');         // display weeknumber
+      break;
+    case 'l':
+      displayLocation();            // display current location  
     case ':':
       displayDelimiter(':');      // display ':'
       break;  
@@ -231,6 +236,10 @@ void displayNumber(char val) {
     printI00(DW[1]);
   }
 
+}
+
+void displayLocation() {
+  //lcd << settings.location;
 }
 
 void monthShortStr(int val) {
