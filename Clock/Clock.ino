@@ -9,9 +9,7 @@
 LiquidCrystal lcd(11, 12, 2, 3, 4, 5);
 
 // constants won't change:
-const long interval = 1000;           // interval at which to refresh lcd (milliseconds)
-const long switchPages = 30000;
-const String days[2][8] = {{"EN","Mon", "Tue", "Wde", "Thu", "Fri", "Sat", "Sun"},{"NL", "ma", "di", "wo", "do", "vr", "za", "zo"}};
+const String days[2][8] = {{"EN","Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"},{"NL", "ma", "di", "wo", "do", "vr", "za", "zo"}};
 const String months[2][13] = {{"EN","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"},{"NL","jan","feb","mrt","mei","jun","jul","aug","sep","okt","nov","dec"}};
 const String translations[2][4] = {{"EN", "Temperature","Day","Week"},{"NL", "Temperatuur","Dag","Week"}};
 
@@ -53,10 +51,12 @@ typedef struct {
   String language;          // The language for the weekdays (only needed if you want to display weekday)
   char degreesFormat;       // Celcius or Fahrenheit
   boolean longFormat;       // Display temperature, weeknumber and daynumber with label
+  long interval;            // interval at which to refresh lcd (milliseconds)
+  long switchPages;         // interval at which to switchPage 1 to 2 (milliseconds)
 } Settings;
 
-Settings default_settings = {24,true,"NL",'c',false};
-Settings settings = {24,true,"NL",'c',true};
+Settings default_settings = {24,true,"NL",'c',false,1000,30000};
+Settings settings = {24,true,"NL",'c',false,1000,30000};
 
 unsigned long previousMillis = 0;        // will store last time lcd was updated
 unsigned long oldMillis = 0;             // will store last time lcd switched pages
@@ -83,14 +83,14 @@ void loop() {
   // between the current time and last time you refreshed the lcd is bigger than
   // the interval at which you want to refresh the lcd.
   unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval) {
+  if (currentMillis - previousMillis >= settings.interval) {
     // save the last time you refreshed the lcd
     previousMillis = currentMillis;
 
     // display the date and time according to the specificied order with the specified settings
     displayDateTime(0, 2);
   }
-  if (currentMillis - oldMillis >= switchPages) {
+  if (currentMillis - oldMillis >= settings.switchPages) {
     oldMillis = currentMillis;
 
     displayDateTime(2, 4);
