@@ -1,8 +1,10 @@
-#include <DS3232RTC.h>
-#include <LiquidCrystal.h>
-#include <Streaming.h>
-#include <TimeLib.h>
-#include <Wire.h>
+#include <DS3232RTC.h>      // https://github.com/JChristensen/DS3232RTC
+#include <LiquidCrystal.h>  //
+#include <Streaming.h>      //
+#include <Time.h>           //
+#include <TimeLib.h>        //
+#include <Wire.h>           // 
+#include <Timezone.h>       // https://github.com/JChristensen/Timezone
 
 // initialize the library by associating any needed LCD interface pin
 // with the arduino pin number it is connected to
@@ -58,8 +60,25 @@ typedef struct {
   long switchPages;             // interval at which to switchPage 1 to 2 (milliseconds)
 } Settings;
 
+typedef struct {
+    char abbrev[6];    // five chars max
+    uint8_t week;      // First, Second, Third, Fourth, or Last week of the month
+    uint8_t dow;       // day of week, 1=Sun, 2=Mon, ... 7=Sat
+    uint8_t mon;     // 1=Jan, 2=Feb, ... 12=Dec
+    uint8_t hr;      // 0-23
+    int offset;        // offset from UTC in hours
+} TimeSettings;
+
 Settings default_settings = {24,true,"NL",'c',true,1000,30000};
 Settings settings = {24,true,"NL",'c',true,1000,30000};
+TimeSettings settings_DST = {"MDT", Last, Sun, Mar, 2, 2};
+TimeSettings settings_STD = {"MST", Last, Sun, Oct, 2, 1};
+
+// need to use the settings from TimeSettings and make it changeable (in function)
+TimeChangeRule myDST = {"MDT", Last, Sun, Mar, 2, 2*60};    //Daylight time/Summertime = UTC + 2 hours
+TimeChangeRule mySTD = {"MST", Last, Sun, Oct, 2, 1*60};    //Standard time/Wintertime = UTC + 1 hours
+Timezone myTZ(myDST, mySTD);
+TimeChangeRule *tcr;        //pointer to the time change rule, use to get TZ abbrev
 
 unsigned long previousMillis = 0;        // will store last time lcd was updated
 unsigned long oldMillis = 0;             // will store last time lcd switched pages
@@ -102,11 +121,13 @@ void loop() {
 }
 
 void displayDateTime(int rowStart, int rowEnd) {
-  time_t t;
-  t = now();
+  time_t utc, local;
+  utc = now();
 
-  // calculate which day and week of the year it is, according to the current time (t)
-  DayWeekNumber(year(t),month(t),day(t),weekday(t));
+  local = myTZ.toLocal(utc, &tcr);
+
+  // calculate which day and week of the year it is, according to the current local time
+  DayWeekNumber(year(local),month(local),day(local),weekday(local));
 
   lcd.clear();
   lcd.setCursor(0,0);
@@ -116,40 +137,40 @@ void displayDateTime(int rowStart, int rowEnd) {
     if(not(row%2) == 0) lcd.setCursor(0,1);
     // for-loop which loops through each char in row
     for(int pos=0;pos<15;pos++) {
-      displayDesiredFunction(row, pos, t);
+      displayDesiredFunction(row, pos, local);
     }
   }
   return;
 }
 
-void displayDesiredFunction(int row, int pos, time_t t) {
+void displayDesiredFunction(int row, int pos, time_t l) {
   switch(rows[row][pos]) {
     case 'h':
-      displayHours(t);            // display hours (use settings.hourFormat)
+      displayHours(l);            // display hours (use settings.hourFormat)
       break;
     case 'm':
-      printI00(minute(t));        // display minutes
+      printI00(minute(l));        // display minutes
       break;                      
     case 's':
-      printI00(second(t));        // display seconds
+      printI00(second(l));        // display seconds
       break;        
     case 'T':
       displayTemperature();       // display temperature (use settings.temperatureFormat)
       break;
     case 'd':
-      displayWeekday(weekday(t)); // display day of week (use settings.mondayFirstDay and lanuague)
+      displayWeekday(weekday(l)); // display day of week (use settings.mondayFirstDay and lanuague)
       break;        
     case 'D':
-      printI00(day(t));           // display day
+      printI00(day(l));           // display day
       break;  
     case 'M':
-      printI00(month(t));         // display month
+      printI00(month(l));         // display month
       break;
     case 'S':
-      monthShortStr(month(t));    // display month as string
+      monthShortStr(month(l));    // display month as string
       break;  
     case 'Y':
-      printI00(year(t));          // display year
+      printI00(year(l));          // display year
       break;  
     case 'n':
       displayNumber('d');         // display daynumber
@@ -180,8 +201,8 @@ void displayDesiredFunction(int row, int pos, time_t t) {
   }
 }
 
-void displayHours(time_t t) {
-  (settings.hourFormat==24) ? printI00(hour(t)) : printI00(hourFormat12(t));
+void displayHours(time_t l) {
+  (settings.hourFormat==24) ? printI00(hour(l)) : printI00(hourFormat12(l));
   return;
 }
 
