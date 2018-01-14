@@ -11,9 +11,9 @@
 LiquidCrystal lcd(11, 12, 2, 3, 4, 5);
 
 // constants won't change:
-const String days[2][8] = {{"EN","Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"},{"NL", "ma", "di", "wo", "do", "vr", "za", "zo"}};
-const String months[2][13] = {{"EN","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"},{"NL","jan","feb","mrt","mei","jun","jul","aug","sep","okt","nov","dec"}};
-const String translations[2][4] = {{"EN", "Temp","Day","Week"},{"NL", "Temp","Dag","Week"}};
+const String days[2][8] = {{"Sun","Mon", "Tue", "Wed", "Thu", "Fri", "Sat"},{"zo","ma", "di", "wo", "do", "vr", "za"}};
+const String months[2][13] = {{"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"},{"jan","feb","mrt","mei","jun","jul","aug","sep","okt","nov","dec"}};
+const String translations[2][4] = {{"Temp","Day","Week"},{"Temp","Dag","Week"}};
 
 /* EXPLANATION DIFFERENT FUNCTIONS FOR CLOCK
  * TIME
@@ -50,31 +50,36 @@ const String translations[2][4] = {{"EN", "Temp","Day","Week"},{"NL", "Temp","Da
 */
 char rows[4][16] = {{"h:m:s"},{"d D-M-Y"},{"T"},{"w n"}};
 
+enum languages_t {EN, NL}; 
+
 typedef struct {
-  int hourFormat;               // 12 or 24 hour format
-  boolean mondayFirstDay;       // if true, monday will be used as the start of the week; if false, sunday will be used as the start of the week
-  String language;              // The language for the weekdays (only needed if you want to display weekday)
+  int hourFormat;               // 12 or 24 hour format (AM/PM is not displayed)
+  uint8_t language;             // The language for the weekdays (only needed if you want to display weekday)
   char degreesFormat;           // Celcius or Fahrenheit
   boolean longFormat;           // Display temperature, weeknumber and daynumber with label
   long interval;                // interval at which to refresh lcd (milliseconds)
   long switchPages;             // interval at which to switchPage 1 to 2 (milliseconds)
 } Settings;
 
-typedef struct {
-    char abbrev[6];    // five chars max
-    uint8_t week;      // First, Second, Third, Fourth, or Last week of the month
-    uint8_t dow;       // day of week, 1=Sun, 2=Mon, ... 7=Sat
-    uint8_t mon;     // 1=Jan, 2=Feb, ... 12=Dec
-    uint8_t hr;      // 0-23
-    int offset;        // offset from UTC in hours
-} TimeSettings;
+Settings default_settings = {24,NL,'c',true,1000,30000};
+Settings settings = {24,NL,'c',true,1000,30000};
 
-Settings default_settings = {24,true,"NL",'c',true,1000,30000};
-Settings settings = {24,true,"NL",'c',true,1000,30000};
-TimeSettings settings_DST = {"MDT", Last, Sun, Mar, 2, 2};
-TimeSettings settings_STD = {"MST", Last, Sun, Oct, 2, 1};
+//typedef struct {
+//    char abbrev[6];     // five chars max
+//    uint8_t wk;         // First, Second, Third, Fourth, or Last week of the month
+//    uint8_t dow;        // day of week, 1=Sun, 2=Mon, ... 7=Sat
+//    uint8_t mon;        // 1=Jan, 2=Feb, ... 12=Dec
+//    uint8_t hour;       // 0-23
+//    int offset;         // offset from UTC in hours
+//} TimeSettings;
+//
+//TimeSettings settings_DST = {"MDT", Last, Sun, Mar, 2, 2};
+//TimeSettings settings_STD = {"MST", Last, Sun, Oct, 2, 1};
 
 // need to use the settings from TimeSettings and make it changeable (in function)
+//TimeChangeRule myDST = {settings_DST.abbrev, settings_DST.wk, settings_DST.dow, settings_DST.mon, settings_DST.hour, settings_DST.offset*60};    //Daylight time/Summertime = UTC + 2 hours
+//TimeChangeRule mySTD = {settings_STD.abbrev, settings_STD.wk, settings_STD.dow, settings_STD.mon, settings_STD.hour, settings_STD.offset*60};    //Standard time/Wintertime = UTC + 1 hours
+
 TimeChangeRule myDST = {"MDT", Last, Sun, Mar, 2, 2*60};    //Daylight time/Summertime = UTC + 2 hours
 TimeChangeRule mySTD = {"MST", Last, Sun, Oct, 2, 1*60};    //Standard time/Wintertime = UTC + 1 hours
 Timezone myTZ(myDST, mySTD);
@@ -82,6 +87,7 @@ TimeChangeRule *tcr;        //pointer to the time change rule, use to get TZ abb
 
 unsigned long previousMillis = 0;        // will store last time lcd was updated
 unsigned long oldMillis = 0;             // will store last time lcd switched pages
+int language_id;
 short DW[2];
 
 void setup() {
@@ -105,6 +111,7 @@ void loop() {
   // between the current time and last time you refreshed the lcd is bigger than
   // the interval at which you want to refresh the lcd.
   unsigned long currentMillis = millis();
+  defineLanguageId();
   if (currentMillis - previousMillis >= settings.interval) {
     // save the last time you refreshed the lcd
     previousMillis = currentMillis;
@@ -209,12 +216,7 @@ void displayHours(time_t l) {
 void displayTemperature() {
   int tem = RTC.temperature();
   if(settings.longFormat) {
-    for(int count=0;count<2;count++) {
-      if(translations[count][0] == settings.language) {
-        lcd << translations[count][1] << ": ";
-        break;
-      }
-    }
+    lcd << translations[language_id][0] << ": ";
   }
   (settings.degreesFormat == 'c') ? lcd <<int(tem / 4.0) << (char)223 << "C " : lcd << int(tem / 4.0 * 9.0 / 5.0 + 32.0) << (char)223 << "F ";
   return;
@@ -222,41 +224,24 @@ void displayTemperature() {
 
 void displayWeekday(int val)
 {
-  int correction;
-  correction = (settings.mondayFirstDay) ? 1 : 0;
-  for(int count=0;count<2;count++) {
-    if(days[count][0] == settings.language) {
-      lcd << days[count][val-correction];
-      break;
-    }
-  }
+  lcd << days[language_id][val-1];
   return;
 }
 
 void displayNumber(char val) {
   if(val == 'd') {
     if(settings.longFormat == true) {
-      for(int count=0;count<2;count++) {
-        if(translations[count][0] == settings.language) {
-          lcd << translations[count][2] << ": ";
-          break;
-        }
-      }
+      lcd << translations[language_id][1] << ": ";
     }
     printI00(DW[0]);
   }
   else {
     if(settings.longFormat == true) {
-      for(int count=0;count<2;count++) {
-        if(translations[count][0] == settings.language) {
-          lcd << translations[count][3] << ": ";
-          break;
-        }
-      }
+      lcd << translations[language_id][2] << ": ";
     }
     printI00(DW[1]);
   }
-
+  return;
 }
 
 void displayLocation() {
@@ -264,13 +249,18 @@ void displayLocation() {
 }
 
 void monthShortStr(int val) {
-  for(int count=0;count<2;count++) {
-    if(months[count][0] == settings.language) {
-      lcd << months[count][val];
-      break;
-    }
-  }
+  lcd << months[language_id][val];
   return;
+}
+
+void defineLanguageId() {
+  switch(settings.language) {
+    case EN:
+      language_id = 0;
+      break;
+    case NL:
+      language_id = 1;
+  }
 }
 
 void printI00(int val)
