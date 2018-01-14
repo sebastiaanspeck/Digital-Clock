@@ -54,7 +54,7 @@ enum languages_t {EN, NL};
 
 typedef struct {
   int hourFormat;               // 12 or 24 hour format (AM/PM is not displayed)
-  uint8_t language;             // The language for the weekdays (only needed if you want to display weekday)
+  uint8_t language;             // The language for several labels
   char degreesFormat;           // Celcius or Fahrenheit
   boolean longFormat;           // Display temperature, weeknumber and daynumber with label
   long interval;                // interval at which to refresh lcd (milliseconds)

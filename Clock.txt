@@ -43,9 +43,7 @@ DELIMTERS
 DIFFERENT SETTINGS
 Data type name description
 int  hourFormat    : 12 or 24 hour format (12 hour format doesn't print AM/PM)
-bool mondayFirstDay: If true, monday will be used as the start of the week;
-                     If false, sunday will be used as the start of the week
-String language    : The language for the weekdays (only needed if you want to display weekday)
+uint8_t language   : The language for several labels (e.a. weekday)
 char degreesFormat : Celcius or Fahrenheit
 boolean longFormat : Display temperature, weeknumber and daynumber with label
 long interval      : Interval at which to refresh lcd (milliseconds)
