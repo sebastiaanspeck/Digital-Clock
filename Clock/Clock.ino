@@ -1,10 +1,9 @@
 #include <DS3232RTC.h>      // https://github.com/JChristensen/DS3232RTC
-#include <LiquidCrystal.h>  //
-#include <Streaming.h>      //
-#include <Time.h>           //
-#include <TimeLib.h>        //
-#include <Wire.h>           // 
 #include <Timezone.h>       // https://github.com/JChristensen/Timezone
+#include <TimeLib.h>        // https://github.com/PaulStoffregen/Time
+#include <Streaming.h>      // http://arduiniana.org/libraries/streaming/
+#include <Wire.h>           // https://www.arduino.cc/en/Reference/Wire
+#include <LiquidCrystal.h>  // https://www.arduino.cc/en/Reference/LiquidCrystal
 
 // initialize the library by associating any needed LCD interface pin
 // with the arduino pin number it is connected to
