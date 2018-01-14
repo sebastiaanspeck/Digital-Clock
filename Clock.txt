@@ -1,7 +1,8 @@
 Possible screens:
 - Time
 - Date
-- Timer
+- Environmental data (temperature, relative humidity and dew point) 
+- Timer with rounds
 - Stopwatch
 - Local time of different locations (world clock)
 - Settings
