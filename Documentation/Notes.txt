@@ -2,8 +2,8 @@ Possible pages
 1. Time
 2. Date
 3. Alarm
-4. Timer with rounds
-5. Stopwatch
+4. Timer
+5. Stopwatch with rounds
 6. Local time of different locations (world clock)
 7. Weather (temperature, relative humidity and dew point)
 8. Menu
@@ -65,12 +65,14 @@ DELIMTERS
 ' ' = delimiter
 
 DIFFERENT SETTINGS
-int  hourFormat    : 12 or 24 hour format (12 hour format doesn't print AM/PM)
+int  hourFormat    : 12 or 24 hour format (12 hour format doesn't print AM/PM atm)
 uint8_t language   : The language for several labels (e.a. weekday)
 char degreesFormat : Celcius or Fahrenheit
-boolean longFormat : Display temperature, weeknumber and daynumber with label
+boolean labels     : Display e.a. temperature (temp), weeknumber (wk) and daynumber (d) with label
 long interval      : Interval at which to refresh lcd (milliseconds)
 long switchPages   : Interval at which to switchPage 1 to 2 (milliseconds)
+char time          : The format how to show the time on the Time-page (h:m)
+char date          : The format how to show the time on the Date-page (d D-M-Y w)
 
 Menu layout:
 ► Menu-item1
@@ -83,10 +85,29 @@ Menu layout:
   Menu-item4
 
 Menu items:
-- Time
+- Homepage (return to the homepage)
+- Time (show the time and change several settings for the time)
+  -> Show time
+  -> Settings time (12 or 24 hour format, format for showing time, show time alarm 1 or 2 [if set], delimiter for time)
 - Date
+  -> Show date
+  -> Settings date (format for showing time, show weekday, show weeknumber, show number of day in the year, show month as string (short or long))
 - Alarm
-- Timer with rounds
--
+  -> See time of alarm 1 or/and 2
+  -> Set time of alarm 1 or 2
+- Timer
+  -> Show timer -> start timer, pause timer, stop timer, reset timer
+  -> Set timer (hour, minutes, seconds)
+- Stopwatch with rounds
+  -> Show stopwatch -> start stopwatch, stop timer, pause timer, clock a round, reset timer
+- Local time of different locations (world clock)
+  -> Show local times -> scroll down to see more times
+  -> Set which cities you want to see
 - Weather
--
+  -> Show weather information (temperature, relative humidity and dew point)
+  -> Settings weather (Celcius or Fahrenheit, which information to show, format for showing weather infrormation, decimals for weather information)
+- Settings
+  -> Set language [currently only English and Dutch are supported]
+  -> Display labels [weekday, daynumber temperature, dew point, relative humidity]
+  -> Interval of refreshing the lcd
+  -> Interval of switching pages [when at the homepage]
