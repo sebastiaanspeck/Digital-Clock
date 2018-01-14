@@ -14,7 +14,7 @@ This is the digital clock you have always dreamed of. This clock is fully custom
 
 ## Roadmap
 - [ ] Menu to change settings (see [settings](https://github.com/sebastiaanspeck/Digital-Clock#settings))  
- This will be implemented as soon as I have a LCD+Keypad Shield
+This will be implemented as soon as I have a LCD+Keypad Shield
 - [ ] Display humidity (%)
   This will be implemented as soon as I have a temperature and humidity sensor
 - [ ] Display dew point (Celcius en Fahrenheit)
