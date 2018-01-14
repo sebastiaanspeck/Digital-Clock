@@ -12,9 +12,9 @@ LiquidCrystal lcd(11, 12, 2, 3, 4, 5);
 // constants won't change:
 const String days[2][8] = {{"Sun","Mon", "Tue", "Wed", "Thu", "Fri", "Sat"},{"zo","ma", "di", "wo", "do", "vr", "za"}};
 const String months[2][13] = {{"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"},{"jan","feb","mrt","mei","jun","jul","aug","sep","okt","nov","dec"}};
-const String translations[2][4] = {{"Temp","Day","Week"},{"Temp","Dag","Week"}};
+const String translations[2][4] = {{"Temp","D","Wk"},{"Temp","D","Wk"}};
 
-/* EXPLANATION DIFFERENT FUNCTIONS FOR CLOCK
+/* EXPLANATION DIFFERENT FUNCTIONS FOR CLOCK (WILL ONLY BE USED ON THE HOMEPAGE)
  * TIME
 'h' = hours
 'm' = minutes
@@ -47,7 +47,7 @@ const String translations[2][4] = {{"Temp","Day","Week"},{"Temp","Dag","Week"}};
 '|' = delimiter
 ' ' = delimiter
 */
-char rows[4][16] = {{"h:m:s"},{"d D-M-Y"},{"T"},{"w n"}};
+char homepage[4][16] = {{"h:m:s"},{"d D-M-Y"},{"T"},{"w n"}};
 
 enum languages_t {EN, NL}; 
 
@@ -55,13 +55,14 @@ typedef struct {
   int hourFormat;               // 12 or 24 hour format (AM/PM is not displayed)
   uint8_t language;             // The language for several labels
   char degreesFormat;           // Celcius or Fahrenheit
-  boolean longFormat;           // Display temperature, weeknumber and daynumber with label
-  long interval;                // interval at which to refresh lcd (milliseconds)
+  boolean labels;               // Display temperature, weeknumber and daynumber with label
+  long intervalPage1;           // interval at which to refresh lcd (milliseconds)
   long switchPages;             // interval at which to switchPage 1 to 2 (milliseconds)
+  long intervalPage2;           // interval at which to switchPage 2 to 1 (milliseconds)
 } Settings;
 
-Settings default_settings = {24,NL,'c',true,1000,30000};
-Settings settings = {24,NL,'c',true,1000,30000};
+Settings default_settings = {24,NL,'c',true,1000,30000,5000};
+Settings settings = {24,NL,'c',true,1000,30000,5000};
 
 //typedef struct {
 //    char abbrev[6];     // five chars max
@@ -84,7 +85,7 @@ TimeChangeRule mySTD = {"MST", Last, Sun, Oct, 2, 1*60};    //Standard time/Wint
 Timezone myTZ(myDST, mySTD);
 TimeChangeRule *tcr;        //pointer to the time change rule, use to get TZ abbrev
 
-unsigned long previousMillis = 0;        // will store last time lcd was updated
+unsigned long previousMillis1 = 0;       // will store last time lcd was updated (page 1)
 unsigned long oldMillis = 0;             // will store last time lcd switched pages
 int language_id;
 short DW[2];
@@ -111,22 +112,24 @@ void loop() {
   // the interval at which you want to refresh the lcd.
   unsigned long currentMillis = millis();
   defineLanguageId();
-  if (currentMillis - previousMillis >= settings.interval) {
+  if (currentMillis - previousMillis1 >= settings.intervalPage1) {
     // save the last time you refreshed the lcd
-    previousMillis = currentMillis;
+    previousMillis1 = currentMillis;
 
     // display the date and time according to the specificied order with the specified settings
-    displayDateTime(0, 2);
+    displayPage(0, 2);
   }
   if (currentMillis - oldMillis >= settings.switchPages) {
     oldMillis = currentMillis;
 
-    displayDateTime(2, 4);
-    delay(5000);
+    displayPage(2, 4);
+
+    delay(settings.intervalPage2);
+    
   }
 }
 
-void displayDateTime(int rowStart, int rowEnd) {
+void displayPage(int rowStart, int rowEnd) {
   time_t utc, local;
   utc = now();
 
@@ -150,7 +153,7 @@ void displayDateTime(int rowStart, int rowEnd) {
 }
 
 void displayDesiredFunction(int row, int pos, time_t l) {
-  switch(rows[row][pos]) {
+  switch(homepage[row][pos]) {
     case 'h':
       displayHours(l);            // display hours (use settings.hourFormat)
       break;
@@ -214,7 +217,7 @@ void displayHours(time_t l) {
 
 void displayTemperature() {
   int tem = RTC.temperature();
-  if(settings.longFormat) {
+  if(settings.labels) {
     lcd << translations[language_id][0] << ": ";
   }
   (settings.degreesFormat == 'c') ? lcd <<int(tem / 4.0) << (char)223 << "C " : lcd << int(tem / 4.0 * 9.0 / 5.0 + 32.0) << (char)223 << "F ";
@@ -229,13 +232,13 @@ void displayWeekday(int val)
 
 void displayNumber(char val) {
   if(val == 'd') {
-    if(settings.longFormat == true) {
+    if(settings.labels == true) {
       lcd << translations[language_id][1] << ": ";
     }
     printI00(DW[0]);
   }
   else {
-    if(settings.longFormat == true) {
+    if(settings.labels == true) {
       lcd << translations[language_id][2] << ": ";
     }
     printI00(DW[1]);
