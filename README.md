@@ -50,8 +50,8 @@ During this project, I used several libraries
 #### 3rd party libraries  
 [DS3232RTC - Made by JChristensen](https://github.com/JChristensen/DS3232RTC) [Used for RTC]   
 [Timezone - Made by JChristensen](https://github.com/JChristensen/Timezone) [Used for DST and Worldclock]  
-[Streaming - Made by Mikal Hart](http://arduiniana.org/libraries/streaming/) [Used for simple printing on the LCD]  
-[TimeLib - Made by PaulStoffregen](https://github.com/PaulStoffregen/Time) [Used for time]
+[TimeLib - Made by PaulStoffregen](https://github.com/PaulStoffregen/Time) [Used for time]  
+[Streaming - Made by Mikal Hart](http://arduiniana.org/libraries/streaming/) [Used for easier printing on the LCD]  
 
 #### Standard libraries
 [Wire](https://www.arduino.cc/en/Reference/Wire) [Used for communication with I2C devices (DS3232 RTC)]  

@@ -1,12 +1,35 @@
-Possible screens:
-- Time
-- Date
-- Environmental data (temperature, relative humidity and dew point) 
-- Timer with rounds
-- Stopwatch
-- Local time of different locations (world clock)
-- Settings
-- Alarm
+Possible pages
+1. Time
+2. Date
+3. Alarm
+4. Timer with rounds
+5. Stopwatch
+6. Local time of different locations (world clock)
+7. Weather (temperature, relative humidity and dew point)
+8. Menu
+
+Useable buttons:
+Select -> If this button is pressed, and the user is in screen 1 to 7, open up screen 8 (menu)
+       -> If this button is pressed, and the user is in screen 8 (menu), select the current item (marked with cursorRight)
+Up -> scroll up 1 item or current value +1
+Down -> scroll down 1 item or current value -1
+Left -> used as Back/Return button or to cycle through the pages (-1)
+Right -> used as saving the current setting or to cycle through the pages (+1)
+
+byte cursorRight[8] =
+{
+  B00000, B01000, B01100, B01110, B01100, B01000, B00000, B00000
+};
+
+byte arrowUp[8] =
+{
+  B00100, B01110, B10101, B00100, B00100, B00100, B00100, B00100
+};
+
+byte arrowDown[8] =
+{
+  B00100, B00100, B00100, B00100, B10101, B01110, B00100, B00100
+};
 
 DIFFERENT FUNCTIONS FOR CLOCK
 TIME
@@ -42,10 +65,28 @@ DELIMTERS
 ' ' = delimiter
 
 DIFFERENT SETTINGS
-Data type name description
 int  hourFormat    : 12 or 24 hour format (12 hour format doesn't print AM/PM)
 uint8_t language   : The language for several labels (e.a. weekday)
 char degreesFormat : Celcius or Fahrenheit
 boolean longFormat : Display temperature, weeknumber and daynumber with label
 long interval      : Interval at which to refresh lcd (milliseconds)
 long switchPages   : Interval at which to switchPage 1 to 2 (milliseconds)
+
+Menu layout:
+► Menu-item1
+  Menu-item2 ↓
+
+► Menu-item2 ↑
+  Menu-item3 ↓
+
+► Menu-item3 ↑
+  Menu-item4
+
+Menu items:
+- Time
+- Date
+- Alarm
+- Timer with rounds
+-
+- Weather
+-
