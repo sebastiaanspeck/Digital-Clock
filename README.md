@@ -13,8 +13,8 @@ This is the digital clock you have always dreamed of. This clock is fully custom
 -	Change summer<->wintertime ([more info](https://en.wikipedia.org/wiki/Summer_Time_in_Europe))
 
 ## Roadmap
-| Implemented | Description | Current state | Target
-| ----------- | ----------- | ------------- |
+| Implemented | Description | Current state | Target |
+| ----------- | ----------- | ------------- | ------ |
 | :+1: | Change summer<->wintertime ([more info](https://en.wikipedia.org/wiki/Summer_Time_in_Europe)) | Added on 13-01-2018 | Already added
 | :-1: | Menu to change settings (see [settings](https://github.com/sebastiaanspeck/Digital-Clock#settings)) | This will be implemented as soon as I have a LCD+Keypad Shield | End of January 2018
 | :-1: | Display/set alarm | This will be implemented as soon as I have a LCD+Keypad Shield | End of January 2018
