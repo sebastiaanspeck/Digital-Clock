@@ -13,7 +13,7 @@ This is the digital clock you have always dreamed of. This clock is fully custom
 - Display number of day in the year
 -	Change summer<->winter time ([more info](https://en.wikipedia.org/wiki/Summer_Time_in_Europe))
 - Display humidity (%)
-- Display humidity
+- Display dew point (Celsius and Fahrenheit)
 
 ### Roadmap
  OK | Description | Current state | Target
