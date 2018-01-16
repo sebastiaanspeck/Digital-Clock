@@ -12,8 +12,11 @@ This is the digital clock you have always dreamed of. This clock is fully custom
 - Display weeknumber
 - Display number of day in the year
 -	Change summer<->winter time ([more info](https://en.wikipedia.org/wiki/Summer_Time_in_Europe))
+<<<<<<< HEAD
 - Display humidity (%)
 - Display humidity
+=======
+>>>>>>> 373e3f6096cb13d34cc48fc0a0367ce72689ce99
 
 ### Roadmap
  OK | Description | Current state | Target
