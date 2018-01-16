@@ -59,21 +59,11 @@ typedef struct {
   boolean labels;               // Display temperature, weeknumber and daynumber with label
   long intervalPage1;           // interval at which to refresh lcd (milliseconds)
   long switchPages;             // interval at which to switchPage 1 to 2 (milliseconds)
-  long intervalPage2;           // interval at which to switchPage 2 to 1 (milliseconds)
 } Settings;
 
-Settings default_settings = {24,NL,'c',true,1000,30000,5000};
-Settings settings = {24,NL,'c',true,1000,30000,5000};
+Settings default_settings = {24,NL,'c',true,1000,30000};
+Settings settings = {24,NL,'c',true,1000,30000};
 
-//typedef struct {
-//    char abbrev[6];     // five chars max
-//    uint8_t wk;         // First, Second, Third, Fourth, or Last week of the month
-//    uint8_t dow;        // day of week, 1=Sun, 2=Mon, ... 7=Sat
-//    uint8_t mon;        // 1=Jan, 2=Feb, ... 12=Dec
-//    uint8_t hour;       // 0-23
-//    int offset;         // offset from UTC in hours
-//} TimeSettings;
-//
 //TimeSettings settings_DST = {"MDT", Last, Sun, Mar, 2, 2};
 //TimeSettings settings_STD = {"MST", Last, Sun, Oct, 2, 1};
 
@@ -86,9 +76,12 @@ TimeChangeRule mySTD = {"MST", Last, Sun, Oct, 2, 1*60};    //Standard time/Wint
 Timezone myTZ(myDST, mySTD);
 TimeChangeRule *tcr;        //pointer to the time change rule, use to get TZ abbrev
 
-unsigned long previousMillis1 = 0;       // will store last time lcd was updated (page 1)
+unsigned long previousMillis = 0;       // will store last time lcd was updated (page 1)
 unsigned long oldMillis = 0;             // will store last time lcd switched pages
 int language_id;
+int rowX = 0;
+int rowY = 2;
+int numberOfPages = (sizeof(homepage)/sizeof(char))/32;
 
 void setup() {
   Serial.begin(9600);
@@ -112,19 +105,23 @@ void loop() {
   // the interval at which you want to refresh the lcd.
   unsigned long currentMillis = millis();
   defineLanguageId();
-  if (currentMillis - previousMillis1 >= settings.intervalPage1) {
+  if (currentMillis - previousMillis >= settings.intervalPage1) {
     // save the last time you refreshed the lcd
-    previousMillis1 = currentMillis;
-
+    previousMillis = currentMillis;
+    
     // display the date and time according to the specificied order with the specified settings
-    displayPage(0, 2);
+    displayPage(rowX, rowY);
   }
   if (currentMillis - oldMillis >= settings.switchPages) {
     oldMillis = currentMillis;
 
-    displayPage(2, 4);
-
-    delay(settings.intervalPage2);
+    if(rowX == numberOfPages) {
+      rowX = 0;
+      rowY = 2;
+    } else {
+      rowX += 2;
+      rowY += 2;
+    }
     
   }
 }
