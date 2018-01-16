@@ -4,15 +4,16 @@
 #include <Streaming.h>      // http://arduiniana.org/libraries/streaming/
 #include <Wire.h>           // https://www.arduino.cc/en/Reference/Wire
 #include <LiquidCrystal.h>  // https://www.arduino.cc/en/Reference/LiquidCrystal
+#include "Date.h"
 
 // initialize the library by associating any needed LCD interface pin
 // with the arduino pin number it is connected to
 LiquidCrystal lcd(11, 12, 2, 3, 4, 5);
 
 // constants won't change:
-const String days[2][8] = {{"Sun","Mon", "Tue", "Wed", "Thu", "Fri", "Sat"},{"zo","ma", "di", "wo", "do", "vr", "za"}};
-const String months[2][13] = {{"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"},{"jan","feb","mrt","mei","jun","jul","aug","sep","okt","nov","dec"}};
-const String translations[2][4] = {{"Temp","D","Wk"},{"Temp","D","Wk"}};
+const String days[2][7] = {{"Sun","Mon", "Tue", "Wed", "Thu", "Fri", "Sat"},{"zo","ma", "di", "wo", "do", "vr", "za"}};
+const String months[2][12] = {{"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"},{"jan","feb","mrt","mei","jun","jul","aug","sep","okt","nov","dec"}};
+const String translations[2][3] = {{"Temp","D","Wk"},{"Temp","D","Wk"}};
 
 /* EXPLANATION DIFFERENT FUNCTIONS FOR CLOCK (WILL ONLY BE USED ON THE HOMEPAGE)
  * TIME
@@ -88,7 +89,6 @@ TimeChangeRule *tcr;        //pointer to the time change rule, use to get TZ abb
 unsigned long previousMillis1 = 0;       // will store last time lcd was updated (page 1)
 unsigned long oldMillis = 0;             // will store last time lcd switched pages
 int language_id;
-short DW[2];
 
 void setup() {
   Serial.begin(9600);
@@ -176,7 +176,7 @@ void displayDesiredFunction(int row, int pos, time_t l) {
       printI00(month(l));         // display month
       break;
     case 'S':
-      monthShortStr(month(l));    // display month as string
+      displayMonthShortStr(month(l));    // display month as string
       break;  
     case 'Y':
       printI00(year(l));          // display year
@@ -246,13 +246,13 @@ void displayNumber(char val) {
   return;
 }
 
-void displayLocation() {
-  //lcd << settings.location;
-}
-
-void monthShortStr(int val) {
+void displayMonthShortStr(int val) {
   lcd << months[language_id][val];
   return;
+}
+
+void displayLocation() {
+  //lcd << settings.location;
 }
 
 void defineLanguageId() {
@@ -274,23 +274,6 @@ void printI00(int val)
 
 void displayDelimiter(char delim) {
   lcd << delim;
-  return;
-}
-
-void DayWeekNumber(unsigned int y, unsigned int m, unsigned int d, unsigned int w){
-  int ndays[]={0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};    // Number of days at the beginning of the month in a not leap year.
-  //Start to calculate the number of day
-  if (m == 1 || m == 2){
-    DW[0] = ndays[(m-1)]+d;                     //for any type of year, it calculate the number of days for January or february
-  }                        // Now, try to calculate for the other months
-  else if ((y % 4 == 0 && y % 100 != 0) ||  y % 400 == 0){  //those are the conditions to have a leap year
-   DW[0] = ndays[(m-1)]+d+1;     // if leap year, calculate in the same way but increasing one day
-  }
-  else {                                //if not a leap year, calculate in the normal way, such as January or February
-    DW[0] = ndays[(m-1)]+d;
-  }
-  // Now start to calculate Week number
-  (w==0) ? DW[1] = (DW[0]-7+10)/7 : DW[1] = (DW[0]-w+10)/7;
   return;
 }
 
