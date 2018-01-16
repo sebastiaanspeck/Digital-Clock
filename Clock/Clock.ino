@@ -4,16 +4,22 @@
 #include <Streaming.h>      // http://arduiniana.org/libraries/streaming/
 #include <Wire.h>           // https://www.arduino.cc/en/Reference/Wire
 #include <LiquidCrystal.h>  // https://www.arduino.cc/en/Reference/LiquidCrystal
+#include <DHT.h>            // https://github.com/adafruit/DHT-sensor-library
 #include "Date.h"
+
+#define DHTPIN 2     // what pin we're connected to
+#define DHTTYPE DHT22   // DHT 22  (AM2302)
 
 // initialize the library by associating any needed LCD interface pin
 // with the arduino pin number it is connected to
-LiquidCrystal lcd(11, 12, 2, 3, 4, 5);
+LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
+
+DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor for normal 16mhz Arduino
 
 // constants won't change:
 const String days[2][7] = {{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}, {"zo", "ma", "di", "wo", "do", "vr", "za"}};
 const String months[2][12] = {{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"}, {"jan", "feb", "mrt", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"}};
-const String translations[2][3] = {{"Temp", "D", "Wk"}, {"Temp", "D", "Wk"}};
+const String labels[5] = {"T", "RH", "DP", "D", "Wk"};
 
 /* EXPLANATION DIFFERENT FUNCTIONS FOR CLOCK (WILL ONLY BE USED ON THE HOMEPAGE)
    TIME
@@ -48,7 +54,7 @@ const String translations[2][3] = {{"Temp", "D", "Wk"}, {"Temp", "D", "Wk"}};
    '|' = delimiter
    ' ' = delimiter
 */
-char homepage[4][16] = {{"h:m:s"}, {"d D-M-Y"}, {"T"}, {"w n"}};
+char homepage[][16] = {{"h:m:s"}, {"d D-M-Y"}, {"w n"}, {"S"}, {"T H"}, {"P"}};
 
 enum languages_t {EN, NL};
 
@@ -64,24 +70,20 @@ typedef struct {
 Settings default_settings = {24, NL, 'c', true, 1000, 30000};
 Settings settings = {24, NL, 'c', true, 1000, 30000};
 
-//TimeSettings settings_DST = {"MDT", Last, Sun, Mar, 2, 2};
-//TimeSettings settings_STD = {"MST", Last, Sun, Oct, 2, 1};
-
-// need to use the settings from TimeSettings and make it changeable (in function)
-//TimeChangeRule myDST = {settings_DST.abbrev, settings_DST.wk, settings_DST.dow, settings_DST.mon, settings_DST.hour, settings_DST.offset*60};    //Daylight time/Summertime = UTC + 2 hours
-//TimeChangeRule mySTD = {settings_STD.abbrev, settings_STD.wk, settings_STD.dow, settings_STD.mon, settings_STD.hour, settings_STD.offset*60};    //Standard time/Wintertime = UTC + 1 hours
-
 TimeChangeRule myDST = {"MDT", Last, Sun, Mar, 2, 2 * 60};  //Daylight time/Summertime = UTC + 2 hours
 TimeChangeRule mySTD = {"MST", Last, Sun, Oct, 2, 1 * 60};  //Standard time/Wintertime = UTC + 1 hours
 Timezone myTZ(myDST, mySTD);
 TimeChangeRule *tcr;        //pointer to the time change rule, use to get TZ abbrev
 
-unsigned long previousMillis = 0;       // will store last time lcd was updated (page 1)
+unsigned long previousMillis = 0;        // will store last time lcd was updated (page 1)
 unsigned long oldMillis = 0;             // will store last time lcd switched pages
 int language_id;
 int rowX = 0;
 int rowY = 2;
 int numberOfPages = (sizeof(homepage) / sizeof(char)) / 32;
+float tem;
+float hum;
+float dew;
 
 void setup() {
   Serial.begin(9600);
@@ -94,6 +96,7 @@ void setup() {
   setSyncProvider(RTC.get);
   if (timeStatus() != timeSet) lcd << ("RTC SYNC FAILED");
 
+
   pinMode(13, OUTPUT);
   digitalWrite(13, LOW);
 
@@ -105,6 +108,8 @@ void loop() {
   // the interval at which you want to refresh the lcd.
   unsigned long currentMillis = millis();
   defineLanguageId();
+  tem = dht.readTemperature();
+  hum = dht.readHumidity();
   if (currentMillis - previousMillis >= settings.intervalPage1) {
     // save the last time you refreshed the lcd
     previousMillis = currentMillis;
@@ -115,18 +120,21 @@ void loop() {
   if (currentMillis - oldMillis >= settings.switchPages) {
     oldMillis = currentMillis;
 
-    if (rowX == numberOfPages) {
+    if (rowY == numberOfPages * 2) {
       rowX = 0;
       rowY = 2;
+      lcd.clear();
     } else {
       rowX += 2;
       rowY += 2;
+      lcd.clear();
     }
 
   }
 }
 
 void displayPage(int rowStart, int rowEnd) {
+
   time_t utc, local;
   utc = now();
 
@@ -135,11 +143,10 @@ void displayPage(int rowStart, int rowEnd) {
   // calculate which day and week of the year it is, according to the current local time
   DayWeekNumber(year(local), month(local), day(local), weekday(local));
 
-  lcd.clear();
   lcd.setCursor(0, 0);
   // for-loop which loops through each row
   for (int row = rowStart; row < rowEnd; row++) {
-    // if row == 1, then we are on the second line, so move the cursor of the lcd
+    // if row == odd, then we are on the second line, so move the cursor of the lcd
     if (not(row % 2) == 0) lcd.setCursor(0, 1);
     // for-loop which loops through each char in row
     for (int pos = 0; pos < 15; pos++) {
@@ -152,57 +159,64 @@ void displayPage(int rowStart, int rowEnd) {
 void displayDesiredFunction(int row, int pos, time_t l) {
   switch (homepage[row][pos]) {
     case 'h':
-      displayHours(l);            // display hours (use settings.hourFormat)
+      displayHours(l);                  // display hours (use settings.hourFormat)
+      break;                            
+    case 'm':                           
+      printI00(minute(l));              // display minutes
+      break;                            
+    case 's':                           
+      printI00(second(l));              // display seconds
+      break;                            
+    case 'T':                             
+      displayTemperature();             // display temperature (use settings.temperatureFormat)
+      break;                            
+    case 'H':                           
+      displayHumidity();                // display humidity
       break;
-    case 'm':
-      printI00(minute(l));        // display minutes
-      break;
-    case 's':
-      printI00(second(l));        // display seconds
-      break;
-    case 'T':
-      displayTemperature();       // display temperature (use settings.temperatureFormat)
+    case 'P':
+      displayDewPoint();                // display dew point (use settings.temperatureFormat)
       break;
     case 'd':
-      displayWeekday(weekday(l)); // display day of week (use settings.mondayFirstDay and lanuague)
+      displayWeekday(weekday(l));       // display day of week (use settings.lanuague)
       break;
     case 'D':
-      printI00(day(l));           // display day
+      printI00(day(l));                 // display day
       break;
     case 'M':
-      printI00(month(l));         // display month
+      printI00(month(l));               // display month
       break;
     case 'S':
-      displayMonthShortStr(month(l));    // display month as string
+      displayMonthShortStr(month(l));   // display month as string
       break;
     case 'Y':
-      printI00(year(l));          // display year
+      printI00(year(l));                // display year
       break;
     case 'n':
-      displayNumber('d');         // display daynumber
+      displayNumber('d');               // display daynumber
       break;
     case 'w':
-      displayNumber('w');         // display weeknumber
+      displayNumber('w');               // display weeknumber
       break;
     case 'l':
-      displayLocation();            // display current location
+      displayLocation();                // display current location
+      break;
     case ':':
-      displayDelimiter(':');      // display ':'
+      displayDelimiter(':');            // display ':'
       break;
     case '-':
-      displayDelimiter('-');      // display '-'
+      displayDelimiter('-');            // display '-'
       break;
     case '/':
-      displayDelimiter('/');      // display '/'
+      displayDelimiter('/');            // display '/'
       break;
     case '.':
-      displayDelimiter('.');      // display '.'
+      displayDelimiter('.');            // display '.'
       break;
     case '|':
-      displayDelimiter('|');      // display '|'
+      displayDelimiter('|');            // display '|'
       break;
     case ' ':
-      displayDelimiter(' ');      // display ' '
+      displayDelimiter(' ');            // display ' '
       break;
   }
 }
@@ -213,12 +227,33 @@ void displayHours(time_t l) {
 }
 
 void displayTemperature() {
-  int tem = RTC.temperature();
   if (settings.labels) {
-    lcd << translations[language_id][0] << ": ";
+    lcd << labels[0] << ": ";
   }
-  (settings.degreesFormat == 'c') ? lcd << int(tem / 4.0) << (char)223 << "C " : lcd << int(tem / 4.0 * 9.0 / 5.0 + 32.0) << (char)223 << "F ";
-  return;
+  (settings.degreesFormat == 'c') ? lcd << int(tem) << (char)223 << "C" : lcd << int(((tem * 9) / 5) + 32) << (char)223 << "F";
+}
+
+void displayHumidity() {
+  if (settings.labels) {
+    lcd << labels[1] << ": ";
+  }
+  lcd << int(hum) << "%";
+}
+
+void displayDewPoint() {
+  dew = calculateDewPoint(tem, hum);
+  if (settings.labels) {
+    lcd << labels[2] << ": ";
+  }
+  (settings.degreesFormat == 'c') ? lcd << int(dew) << (char)223 << "C" : lcd << int(((dew * 9) / 5) + 32) << (char)223 << "F";
+}
+
+float calculateDewPoint(float t, float h) {
+  float a = 17.271;
+  float b = 237.7;
+  float temp = (a * t) / (b + t) + log(h * 0.01);
+  float Td = (b * temp) / (a - temp);
+  return Td;
 }
 
 void displayWeekday(int val)
@@ -230,13 +265,13 @@ void displayWeekday(int val)
 void displayNumber(char val) {
   if (val == 'd') {
     if (settings.labels == true) {
-      lcd << translations[language_id][1] << ": ";
+      lcd << labels[3] << ": ";
     }
     printI00(DW[0]);
   }
   else {
     if (settings.labels == true) {
-      lcd << translations[language_id][2] << ": ";
+      lcd << labels[4] << ": ";
     }
     printI00(DW[1]);
   }
