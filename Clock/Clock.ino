@@ -22,7 +22,7 @@ const String translations[2][3] = {{"Temp", "D", "Wk"}, {"Temp", "D", "Wk"}};
    's' = seconds
    'a' = alarm 1       (not atm)
    'A' = alarm 2       (not atm)
-   
+
    WEATHER
    'T' = temperature
    'H' = humidity      (no sensor atm)
@@ -36,7 +36,7 @@ const String translations[2][3] = {{"Temp", "D", "Wk"}, {"Temp", "D", "Wk"}};
    'Y' = year
    'w' = weeknumber
    'n' = daynumber
-   
+
    MISCELLANEOUS
    'l' = current location  (need to create a array of enums/strings which can be used in Settings)
 
