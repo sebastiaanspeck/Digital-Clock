@@ -98,9 +98,9 @@ Menu items:
 - Timer
   -> Show timer -> start timer, pause timer, stop timer, reset timer
   -> Set timer (hour, minutes, seconds)
-- Stopwatch with rounds
+- Stopwatch
   -> Show stopwatch -> start stopwatch, stop timer, pause timer, clock a round, reset timer
-- Local time of different locations (world clock)
+- Worldclock
   -> Show local times -> scroll down to see more times
   -> Set which cities you want to see
 - Weather
@@ -111,3 +111,28 @@ Menu items:
   -> Display labels [weekday, daynumber temperature, dew point, relative humidity]
   -> Interval of refreshing the lcd
   -> Interval of switching pages [when at the homepage]
+
+  Menu:
+  ► Homepage
+    Time       ↓
+
+  ► Time       ↑
+    Date       ↓
+
+  ► Date       ↑
+    Alarm      ↓
+
+  ► Alarm      ↑
+    Timer      ↓
+
+  ► Timer      ↑
+    Stopwatch  ↓
+
+  ► Stopwatch  ↑
+    Worldclock ↓
+
+  ► Worldclock ↑
+    Weather    ↓
+
+  ► Weather    ↑
+    Settings   
