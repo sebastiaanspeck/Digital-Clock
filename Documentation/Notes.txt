@@ -135,4 +135,4 @@ Menu items:
     Weather    ↓
 
   ► Weather    ↑
-    Settings   
+    Settings
