@@ -76,9 +76,9 @@ enum hourFormats_t {HourFormat12, HourFormat24};
 
 typedef struct {
   uint8_t hourFormat;               // 12 or 24 hour format (AM/PM is not displayed)
-  uint8_t language;             // The language for several labels
-  uint8_t degreesFormat;           // Celsius or Fahrenheit
-  boolean labels;               // Display temperature, weeknumber and daynumber with label
+  uint8_t language;                 // The language for several labels
+  uint8_t degreesFormat;            // Celsius or Fahrenheit
+  boolean labels;                   // Display temperature, weeknumber and daynumber with label
 } Settings;
 
 Settings settings = {HourFormat24, NL, CELSIUS, true};
