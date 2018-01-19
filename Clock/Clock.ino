@@ -1,3 +1,11 @@
+/***************************************************************************************
+    Name          : Digital Clock
+    Author        : Sebastiaan Speck
+    Created       : January 14, 2018
+    Last Modified : January 19, 2018
+    Version       : 2.1
+ ***************************************************************************************/
+
 #include <DS3232RTC.h>      // https://github.com/JChristensen/DS3232RTC
 #include <Timezone.h>       // https://github.com/JChristensen/Timezone
 #include <TimeLib.h>        // https://github.com/PaulStoffregen/Time
@@ -14,7 +22,18 @@
 // with the arduino pin number it is connected to
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 
-DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor for normal 16mhz Arduino
+DHT dht(DHTPIN, DHTTYPE);
+
+String menuItems[] = {"Homepage", "Tijd", "Datum", "Alarm", "Timer", "Stopwatch", "Wereldklok", "Weer", "Instellingen"};
+
+const char degreesSymbol = 223;
+
+const int kNumLCDCols = 16;
+const int kNumLCDRows = 2;
+const int kSerialBaud = 9600;
+const int kLPin = 13;
+const int kNumLCDChars = kNumLCDCols * kNumLCDRows;
+
 
 /* EXPLANATION DIFFERENT FUNCTIONS FOR CLOCK (WILL ONLY BE USED ON THE HOMEPAGE)
    TIME
@@ -26,8 +45,9 @@ DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor for normal 16mhz Arduino
 
    WEATHER
    'T' = temperature
-   'H' = humidity      (no sensor atm)
-   'P' = dew point     (no sensor atm)
+   'H' = humidity
+   'P' = dew point
+   'I' = heat index
 
    DATE
    'd' = day of week
@@ -50,25 +70,16 @@ DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor for normal 16mhz Arduino
    ' ' = delimiter
 */
 
-const int kNumLCDCols = 16;
-const int kNumLCDRows = 2;
-const int kSerialBaud = 9600;
-const int kLPin = 13;
-const int kNumLCDChars = kNumLCDCols * kNumLCDRows;
-
-char homepage[][kNumLCDCols] = {{"h:m:s"}, {"d D-M-Y"}, {"T H"}, {"w n"}};
+char default_page[][kNumLCDCols] = {("h:m:s T", "d D-M-Y")};
+char page[4][kNumLCDCols];
 
 const size_t kNumSupportedLanguages = 2;
 const size_t kNumDaysPerWeek = 7;
 const size_t kNumMonthsPerYear = 12;
-const size_t kNumLabels = 5;
-const size_t numberOfPages = (sizeof(homepage) / sizeof(char)) / kNumLCDChars;
+const size_t numberOfPages = (sizeof(page) / sizeof(char)) / kNumLCDChars;
 
 const String days[kNumSupportedLanguages][kNumDaysPerWeek] = {{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}, {"zo", "ma", "di", "wo", "do", "vr", "za"}};
 const String months[kNumSupportedLanguages][kNumMonthsPerYear] = {{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"}, {"jan", "feb", "mrt", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"}};
-const String labels[kNumLabels] = {"T", "RH", "DP", "D", "Wk"};
-
-const char degreesSymbol = 223;
 
 enum languages_t {EN, NL};
 enum degreesFormats_t {CELSIUS, FAHRENHEIT};
@@ -81,85 +92,286 @@ typedef struct {
   boolean labels;                   // Display temperature, weeknumber and daynumber with label
 } Settings;
 
+Settings default_settings = {HourFormat24, NL, CELSIUS, true};
 Settings settings = {HourFormat24, NL, CELSIUS, true};
 
-unsigned long previousMillis = 0;        // will store last time lcd was updated (page 1)
-unsigned long oldMillis = 0;             // will store last time lcd switched pages
+int language_id;
+
+// Navigation button variables
+int readKey;
+int savedDistance = 0;
+
+// Menu control variables
+int menuPage = 0;
+int maxMenuPages = (sizeof(menuItems) / sizeof(String)) - 2;
+int cursorPosition = 0;
+
+int brightness = 200;
+boolean NightLight = false;
+boolean LCDOff = false;
+const int lightsOff = 23;
+const int lightsOn = 9;
+
+// Creates 3 custom characters for the menu display
+byte downArrow[8] = {
+  B00100, B00100, B00100, B00100, B10101, B01110, B00100, B00100
+};
+
+byte upArrow[8] = {
+  B00100, B01110, B10101, B00100, B00100, B00100, B00100, B00100
+};
+
+byte menuCursor[8] = {
+  B01000, B01100, B01110, B01111, B01110, B01100, B01000, B00000
+};
 
 TimeChangeRule myDST = {"MDT", Last, Sun, Mar, 2, 2 * 60};  //Daylight time/Summertime = UTC + 2 hours
 TimeChangeRule mySTD = {"MST", Last, Sun, Oct, 2, 1 * 60};  //Standard time/Wintertime = UTC + 1 hours
 Timezone myTZ(myDST, mySTD);
 TimeChangeRule *tcr;        //pointer to the time change rule, use to get TZ abbrev
 
-int language_id;
-int rowX = 0;
-int rowY = 2;
-float tem;
-float hum;
-float dew;
+time_t oldTime;
 
+float weather[4];
+
+unsigned long previousMillis = 0;
+unsigned long LCDPrevious = 0;
 const long refreshRate = 1000;
-const long switchPages = 30000;
+const long LCDNightLight = 10;    //seconds
 
 void setup() {
-  Serial.begin(9600);
+
+  // Initializes serial communication
+  Serial.begin(kSerialBaud);
 
   lcd.begin(kNumLCDCols, kNumLCDRows);
 
-  // setSyncProvider() causes the Time library to synchronize with the
-  // external RTC by calling RTC.get() every five minutes by default.
+  dht.begin();
+
+  // Creates the byte for the 3 custom characters
+  lcd.createChar(0, menuCursor);
+  lcd.createChar(1, upArrow);
+  lcd.createChar(2, downArrow);
+
   setSyncProvider(RTC.get);
   if (timeStatus() != timeSet) lcd << ("RTC SYNC FAILED");
 
   pinMode(kLPin, OUTPUT);
   digitalWrite(kLPin, LOW);
+
+  getLanguageId();
+  getWeather();
 }
 
 void loop() {
-  mainLoop();
+  mainMenuDraw();
+  drawCursor();
+  operateMainMenu();
 }
 
-void mainLoop() {
-  // check to see if it's time to refresh the lcd; that is, if the difference
-  // between the current time and last time you refreshed the lcd is bigger than
-  // the interval at which you want to refresh the lcd.
-  unsigned long currentMillis = millis();
-  defineLanguageId();
-  tem = dht.readTemperature();
-  hum = dht.readHumidity();
-  if (currentMillis - previousMillis >= refreshRate) {
-    // save the last time you refreshed the lcd
-    previousMillis = currentMillis;
+void getWeather() {
+  weather[0] = dht.readTemperature();
+  weather[1] = dht.readHumidity();
+  weather[2] = calculateDewPoint(weather[0], weather[1]);
+  weather[3] = dht.computeHeatIndex(weather[0], weather[1], false);
+}
 
-    // display the date and time according to the specificied order with the specified settings
-    displayPage(rowX, rowY);
+float calculateDewPoint(float t, float h) {
+  float a = 17.271;
+  float b = 237.7;
+  float temp = (a * t) / (b + t) + log(h * 0.01);
+  float Td = (b * temp) / (a - temp);
+  return Td;
+}
+
+// This function will generate the 2 menu items that can fit on the screen. They will change as you scroll through your menu. Up and down arrows will indicate your current menu position.
+void mainMenuDraw() {
+  lcd.clear();
+  lcd.setCursor(1, 0);
+  lcd.print(menuItems[menuPage]);
+  lcd.setCursor(1, 1);
+  lcd.print(menuItems[menuPage + 1]);
+  if (menuPage == 0) {
+    lcd.setCursor(15, 1);
+    lcd.write(byte(2));
+  } else if (menuPage > 0 and menuPage < maxMenuPages) {
+    lcd.setCursor(15, 1);
+    lcd.write(byte(2));
+    lcd.setCursor(15, 0);
+    lcd.write(byte(1));
+  } else if (menuPage == maxMenuPages) {
+    lcd.setCursor(15, 0);
+    lcd.write(byte(1));
   }
-  if (currentMillis - oldMillis >= switchPages) {
-    oldMillis = currentMillis;
+}
 
-    if (rowY == numberOfPages * 2) {
-      rowX = 0;
-      rowY = 2;
-      lcd.clear();
-    } else {
-      rowX += 2;
-      rowY += 2;
-      lcd.clear();
+// When called, this function will erase the current cursor and redraw it based on the cursorPosition and menuPage variables.
+void drawCursor() {
+  for (int x = 0; x < 2; x++) {     // Erases current cursor
+    lcd.setCursor(0, x);
+    lcd.print(" ");
+  }
+
+  // The menu is set up to be progressive (menuPage 0 = Item 1 & Item 2, menuPage 1 = Item 2 & Item 3, menuPage 2 = Item 3 & Item 4), so
+  // in order to determine where the cursor should be you need to see if you are at an odd or even menu page and an odd or even cursor position.
+  if (menuPage % 2 == 0) {
+    if (cursorPosition % 2 == 0) {  // If the menu page is even and the cursor position is even that means the cursor should be on line 1
+      lcd.setCursor(0, 0);
+      lcd.write(byte(0));
     }
-
+    if (cursorPosition % 2 != 0) {  // If the menu page is even and the cursor position is odd that means the cursor should be on line 2
+      lcd.setCursor(0, 1);
+      lcd.write(byte(0));
+    }
+  }
+  if (menuPage % 2 != 0) {
+    if (cursorPosition % 2 == 0) {  // If the menu page is odd and the cursor position is even that means the cursor should be on line 2
+      lcd.setCursor(0, 1);
+      lcd.write(byte(0));
+    }
+    if (cursorPosition % 2 != 0) {  // If the menu page is odd and the cursor position is odd that means the cursor should be on line 1
+      lcd.setCursor(0, 0);
+      lcd.write(byte(0));
+    }
   }
 }
 
-void displayPage(int rowStart, int rowEnd) {
+void operateMainMenu() {
+  int activeButton = 0;
 
-  time_t utc, local;
-  utc = now();
+  while (activeButton == 0) {
+    int button;
+    readKey = analogRead(0);
+    if (readKey < 790) {
+      delay(100);
+      readKey = analogRead(0);
+    }
+    button = evaluateButton(readKey);
+    switch (button) {
+      case 0: // When button returns as 0 there is no action taken
+        break;
+      case 1:  // This case will execute if the "forward" button is pressed
+        button = 0;
+        switch (cursorPosition) { // The case that is selected here is dependent on which menu page you are on and where the cursor is.
+          case 0:                 // Show homepage
+            showPage("h:m:s T", "d D-M-Y");
+            break;
+          case 1:                 // Show time
+            showPage("h:m:s",""); 
+            break;
+          case 2:                 // Show date
+            showPage("d D-M-Y", "w n");
+            break;
+          case 7:                 // Show weather
+            showPage("T H", "P I");
+            break;
+        }
+        activeButton = 1;
+        mainMenuDraw();
+        drawCursor();
+        break;
+      case 2:
+        button = 0;
+        if (menuPage == 0) {
+          cursorPosition = cursorPosition - 1;
+          cursorPosition = constrain(cursorPosition, 0, ((sizeof(menuItems) / sizeof(String)) - 1));
+        }
+        if (menuPage % 2 == 0 and cursorPosition % 2 == 0) {
+          menuPage = menuPage - 1;
+          menuPage = constrain(menuPage, 0, maxMenuPages);
+        }
 
-  local = myTZ.toLocal(utc, &tcr);
+        if (menuPage % 2 != 0 and cursorPosition % 2 != 0) {
+          menuPage = menuPage - 1;
+          menuPage = constrain(menuPage, 0, maxMenuPages);
+        }
 
-  // calculate which day and week of the year it is, according to the current local time
-  DayWeekNumber(year(local), month(local), day(local), weekday(local));
+        cursorPosition = cursorPosition - 1;
+        cursorPosition = constrain(cursorPosition, 0, ((sizeof(menuItems) / sizeof(String)) - 1));
 
+        mainMenuDraw();
+        drawCursor();
+        activeButton = 1;
+        break;
+      case 3:
+        button = 0;
+        if (menuPage % 2 == 0 and cursorPosition % 2 != 0) {
+          menuPage = menuPage + 1;
+          menuPage = constrain(menuPage, 0, maxMenuPages);
+        }
+
+        if (menuPage % 2 != 0 and cursorPosition % 2 == 0) {
+          menuPage = menuPage + 1;
+          menuPage = constrain(menuPage, 0, maxMenuPages);
+        }
+
+        cursorPosition = cursorPosition + 1;
+        cursorPosition = constrain(cursorPosition, 0, ((sizeof(menuItems) / sizeof(String)) - 1));
+        mainMenuDraw();
+        drawCursor();
+        activeButton = 1;
+        break;
+    }
+  }
+}
+
+// This function is called whenever a button press is evaluated. The LCD shield works by observing a voltage drop across the buttons all hooked up to A0.
+int evaluateButton(int x) {
+  if (x < 50)  return 1; // right
+  if (x < 250) return 2; // up
+  if (x < 450) return 3; // down
+  if (x < 650) return 4; // left
+  if (x < 850) return 5; // select
+  return 0;
+}
+
+void showPage(char* line1, char* line2) {
+  int activeButton = 0;
+  lcd.clear();
+  clearPageArray();
+
+  while (activeButton == 0) {
+    unsigned long currentMillis = millis();
+    if (currentMillis - previousMillis >= refreshRate) {
+      previousMillis = currentMillis;
+      int button;
+      time_t l = getTime();
+      lcd.setCursor(0, 0);
+      getWeather();
+      DayWeekNumber(year(l), month(l), day(l), weekday(l));
+      NightTime(l);
+      turnNightLightOff(l);
+      writeToPage(0, line1);
+      writeToPage(1, line2);
+      displayPage(0, 2, l);
+      readKey = analogRead(0);
+      if (readKey < 790) {
+        delay(100);
+        readKey = analogRead(0);
+      }
+      button = evaluateButton(readKey);
+      switch (button) {
+        case 1:
+          button = 0;
+          if (NightLight == false && LCDOff == true) {
+            changeBacklight();
+            oldTime = getTime();
+          }
+          break;
+        case 4:  // This case will execute if the "back" button is pressed
+          button = 0;
+          activeButton = 1;
+          break;
+        case 5:
+          button = 0;
+          changeBacklight();
+          break;
+      }
+    }
+  }
+}
+
+void displayPage(int rowStart, int rowEnd, time_t local) {
   lcd.setCursor(0, 0);
   // for-loop which loops through each row
   for (int row = rowStart; row < rowEnd; row++) {
@@ -173,7 +385,7 @@ void displayPage(int rowStart, int rowEnd) {
 }
 
 void displayDesiredFunction(int row, int pos, time_t l) {
-  switch (homepage[row][pos]) {
+  switch (page[row][pos]) {
     case 'h':
       displayHours(l);                  // display hours (use settings.hourFormat)
       break;
@@ -184,13 +396,16 @@ void displayDesiredFunction(int row, int pos, time_t l) {
       printI00(second(l));              // display seconds
       break;
     case 'T':
-      displayTemperature();             // display temperature (use settings.temperatureFormat)
+      displayWeather(0, "T");                // display temperature (use settings.temperatureFormat)
       break;
     case 'H':
-      displayHumidity();                // display humidity
+      displayHumidity("RH");                // display humidity
       break;
     case 'P':
-      displayDewPoint();                // display dew point (use settings.temperatureFormat)
+      displayWeather(2, "DP");                // display dew point (use settings.temperatureFormat)
+      break;
+    case 'I':
+      displayWeather(3, "HI");                // display heat index (use settings.temperatureFormat)
       break;
     case 'd':
       displayWeekday(weekday(l));       // display day of week (use settings.lanuague)
@@ -208,10 +423,10 @@ void displayDesiredFunction(int row, int pos, time_t l) {
       printI00(year(l));                // display year
       break;
     case 'n':
-      displayNumber('d');               // display daynumber
+      displayNumber('d', "D");               // display daynumber
       break;
     case 'w':
-      displayNumber('w');               // display weeknumber
+      displayNumber('w', "Wk");               // display weeknumber
       break;
     case 'l':
       displayLocation();                // display current location
@@ -241,69 +456,49 @@ void displayHours(time_t l) {
   (settings.hourFormat == HourFormat24) ? printI00(hour(l)) : printI00(hourFormat12(l));
 }
 
-void displayTemperature() {
+void displayWeather(int val, String label) {
   if (settings.labels) {
-    lcd << labels[0] << ": ";
+    lcd << label << ": ";
   }
-  lcdDisplayTempDew(tem);
+  lcdDisplayWeather(weather[val]);
 }
 
-void displayHumidity() {
+void displayHumidity(String label) {
   if (settings.labels) {
-    lcd << labels[1] << ": ";
+    lcd << label << ": ";
   }
-  lcd << int(hum) << "%";
+  lcd << int(weather[1]) << "%";
 }
 
-void displayDewPoint() {
-  dew = calculateDewPoint(tem, hum);
-  if (settings.labels) {
-    lcd << labels[2] << ": ";
-  }
-  lcdDisplayTempDew(dew);
-}
-
-void lcdDisplayTempDew(float val) {
+void lcdDisplayWeather(float val) {
   (settings.degreesFormat == CELSIUS) ? lcd << int(val) << degreesSymbol << "C" : lcd << celsiusToFahrenheit(val) << (char)223 << "F";
 }
 
-float calculateDewPoint(float t, float h) {
-  float a = 17.271;
-  float b = 237.7;
-  float temp = (a * t) / (b + t) + log(h * 0.01);
-  float Td = (b * temp) / (a - temp);
-  return Td;
+int celsiusToFahrenheit(const float celsius) {
+  return static_cast<int>(celsius * 1.8 + 32);
 }
 
-void displayWeekday(int val)
-{
+void displayWeekday(int val) {
   lcd << days[language_id][val - 1];
 }
 
-void displayNumber(char val) {
-  if (val == 'd') {
-    if (settings.labels == true) {
-      lcd << labels[3] << ": ";
-    }
-    printI00(DW[0]);
+void displayNumber(char val, String label) {
+  if (settings.labels == true) {
+    lcd << label << ": ";
   }
-  else {
-    if (settings.labels == true) {
-      lcd << labels[4] << ": ";
-    }
-    printI00(DW[1]);
-  }
+  (val=='d') ? printI00(DW[0]) : printI00(DW[1]);
 }
 
 void displayMonthShortStr(int val) {
-  lcd << months[language_id][val];
+  Serial << val << endl;
+  lcd << months[language_id][val-1];
 }
 
 void displayLocation() {
   //lcd << settings.location;
 }
 
-void defineLanguageId() {
+void getLanguageId() {
   switch (settings.language) {
     case EN:
       language_id = 0;
@@ -313,8 +508,7 @@ void defineLanguageId() {
   }
 }
 
-void printI00(int val)
-{
+void printI00(int val) {
   if (val < 10) lcd << '0';
   lcd << _DEC(val);
 }
@@ -323,12 +517,41 @@ void displayDelimiter(char delim) {
   lcd << delim;
 }
 
-void setTimeRTC(unsigned int hours, unsigned int minutes, unsigned int seconds, unsigned int d, unsigned int m, unsigned int y) {
-  setTime(hours, minutes, seconds, d, m, y);
-  RTC.set(now());
+void writeToPage(int row, char* val) {
+  strcpy(page[row], val);
 }
 
-int celsiusToFahrenheit(const float celsius) {
-  return static_cast<int>(celsius * 1.8 + 32);
+void clearPageArray() {
+  memset(page, 0, sizeof(page));
 }
 
+time_t getTime() {
+  time_t utc, local;
+  utc = now();
+
+  local = myTZ.toLocal(utc, &tcr);
+  return local;
+}
+
+void changeBacklight() {
+  brightness = (brightness == 200) ? 0 : 200;
+  LCDOff = (LCDOff == true) ? false : true;
+  analogWrite(10, brightness);
+}
+
+void NightTime(time_t l) {
+  if (hour(l) == lightsOff && LCDOff == false) {
+    changeBacklight();
+  }
+  if (hour(l) == lightsOn && LCDOff == true) {
+    changeBacklight();
+  }
+}
+
+void turnNightLightOff(time_t l) {
+  if (l - oldTime >= LCDNightLight && oldTime > 0) {
+    changeBacklight();
+    NightLight == false;
+    oldTime = 0;
+  }
+}
