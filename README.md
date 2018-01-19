@@ -14,6 +14,7 @@ This is the digital clock you have always dreamed of. This clock is fully custom
 -	Change summer<->winter time ([more info](https://en.wikipedia.org/wiki/Summer_Time_in_Europe))
 - Display humidity (%)
 - Display dew point (Celsius and Fahrenheit)
+- Display heat index (Celsius and Fahrenheit)
 
 ### Roadmap
  OK | Description | Current state | Target
@@ -21,7 +22,8 @@ This is the digital clock you have always dreamed of. This clock is fully custom
  :+1: | Change summer<->wintertime ([more info](https://en.wikipedia.org/wiki/Summer_Time_in_Europe)) | Added on 13-01-2018 | Already added
  :+1: | Display humidity (%) | Added on 16-01-2018 | Already added
  :+1: | Display dew point (Celsius and Fahrenheit) | Added on 16-01-2018 | Already added
- :-1: | Menu to change settings (see [settings](https://github.com/sebastiaanspeck/Digital-Clock#settings)) | This will be implemented as soon as I have a LCD+Keypad Shield | End of January 2018
+  :+1: | Display heat index | Added on 19-01-2018 | Already added
+ :+1: | Menu to change settings (see [settings](https://github.com/sebastiaanspeck/Digital-Clock#settings)) | Added on 19-01-2018, but not all functions work right now | Already added
  :-1: | Display/set alarm | This will be implemented as soon as I have a LCD+Keypad Shield | End of January 2018
  :-1: | Timer | This will be implemented as soon as I have a LCD+Keypad Shield | End of January 2018
  :-1: | Stopwatch with rounds | This will be implemented as soon as I have a LCD+Keypad Shield | End of January 2018
@@ -34,7 +36,7 @@ Settings name | Description
 ------------- | -----------
 hourFormat    | 12 or 24 hour format (12 hour format doesn't print AM/PM)
 language      | The language for several labels
-degreesFormat | Use Celcius or Fahrenheit for temperature and dew point
+degreesFormat | Use Celsius or Fahrenheit for temperature and dew point
 longFormat    | Display several objects with label (see Clock.txt for all labels)
 interval      | Interval at which to refresh lcd (milliseconds)
 switchPages   | Interval at which to switchPage 1 to 2 (milliseconds) [Only if you have more than 1 page defined]
