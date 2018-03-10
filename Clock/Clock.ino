@@ -13,7 +13,6 @@
 #include <Wire.h>           // https://www.arduino.cc/en/Reference/Wire
 #include <LiquidCrystal.h>  // https://www.arduino.cc/en/Reference/LiquidCrystal
 #include <DHT.h>            // https://github.com/adafruit/DHT-sensor-library
-#include "Date.h"
 
 #define DHTPIN 2     // what pin we're connected to
 #define DHTTYPE DHT22   // DHT 22  (AM2302)
@@ -70,7 +69,7 @@ const int kNumLCDChars = kNumLCDCols * kNumLCDRows;
    ' ' = delimiter
 */
 
-char default_page[][kNumLCDCols] = {("h:m:s T", "d D-M-Y")};
+char default_page[][kNumLCDCols] = {("h:m:s T", "d D-M-Y W")};
 char page[4][kNumLCDCols];
 
 const size_t kNumSupportedLanguages = 2;
@@ -84,16 +83,20 @@ const String months[kNumSupportedLanguages][kNumMonthsPerYear] = {{"Jan", "Feb",
 enum languages_t {EN, NL};
 enum degreesFormats_t {CELSIUS, FAHRENHEIT};
 enum hourFormats_t {HourFormat12, HourFormat24};
+enum firstDayOfWeek_t {SUNDAY, MONDAY};
+
+short DW[2];
 
 typedef struct {
   uint8_t hourFormat;               // 12 or 24 hour format (AM/PM is not displayed)
   uint8_t language;                 // The language for several labels
   uint8_t degreesFormat;            // Celsius or Fahrenheit
+  uint8_t firstDayOfWeek;           // Used for the weeknumber
   boolean labels;                   // Display temperature, weeknumber and daynumber with label
 } Settings;
 
-Settings default_settings = {HourFormat24, NL, CELSIUS, true};
-Settings settings = {HourFormat24, NL, CELSIUS, true};
+Settings default_settings = {HourFormat24, NL, CELSIUS, MONDAY, true};
+Settings settings = {HourFormat24, NL, CELSIUS, MONDAY, true};
 
 int language_id;
 
@@ -254,10 +257,10 @@ void operateMainMenu() {
         button = 0;
         switch (cursorPosition) { // The case that is selected here is dependent on which menu page you are on and where the cursor is.
           case 0:                 // Show homepage
-            showPage("h:m:s T", "d D-M-Y");
+            showPage("h:m:s T", "d D-M-Y W");
             break;
           case 1:                 // Show time
-            showPage("h:m:s",""); 
+            showPage("h:m:s", "");
             break;
           case 2:                 // Show date
             showPage("d D-M-Y", "w n");
@@ -428,6 +431,9 @@ void displayDesiredFunction(int row, int pos, time_t l) {
     case 'w':
       displayNumber('w', "Wk");               // display weeknumber
       break;
+    case 'W':
+      displayNumber('w', "");
+      break;
     case 'l':
       displayLocation();                // display current location
       break;
@@ -483,15 +489,15 @@ void displayWeekday(int val) {
 }
 
 void displayNumber(char val, String label) {
-  if (settings.labels == true) {
+  if (settings.labels == true && label != "") {
     lcd << label << ": ";
   }
-  (val=='d') ? printI00(DW[0]) : printI00(DW[1]);
+  (val == 'd') ? printI00(DW[0]) : printI00(DW[1]);
 }
 
 void displayMonthShortStr(int val) {
   Serial << val << endl;
-  lcd << months[language_id][val-1];
+  lcd << months[language_id][val - 1];
 }
 
 void displayLocation() {
@@ -515,6 +521,26 @@ void printI00(int val) {
 
 void displayDelimiter(char delim) {
   lcd << delim;
+}
+
+void DayWeekNumber(unsigned int y, unsigned int m, unsigned int d, unsigned int w) {
+  int ndays[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};  // Number of days at the beginning of the month in a not leap year.
+  int numLeapDaysToAdd = 0;
+  int firstDayOfTheWeek = 0;
+  if ((y % 4 == 0 && y % 100 != 0) ||  y % 400 == 0) {
+    numLeapDaysToAdd = 1;
+  }
+
+  DW[0] = ndays[(m - 1)] + d + numLeapDaysToAdd;
+
+  // Now start to calculate Week number
+  (settings.firstDayOfWeek == MONDAY) ? firstDayOfTheWeek = 1 : firstDayOfTheWeek = 0;
+  if (w == firstDayOfTheWeek)
+  {
+     DW[1] = (DW[0] - 7 + 10) / 7;
+  } else {
+     DW[1] = (DW[0] - w + 10) / 7;
+  }
 }
 
 void writeToPage(int row, char* val) {
